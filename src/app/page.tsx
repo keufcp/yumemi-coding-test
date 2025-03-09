@@ -1,101 +1,142 @@
-import Image from "next/image";
+'use client';
+import { useEffect, useState } from 'react';
+import { getPref } from '@/pages/api/getPrefData';
+import Plot, { plotOptions } from '@/components/plot';
+import { PrefData as prefData } from '@/pages/api/getPrefData';
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const [prefectures, setPrefectures] = useState<prefData[]>();
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+  // ページ読み込み時に実行
+  //? 都道府県データを取得してstateに格納
+  useEffect(() => {
+    getPref().then((data) => {
+      setPrefectures(data);
+    });
+  }, []);
+
+  // prefecturesが変更されたら実行
+  useEffect(() => {
+    addCheckbox();
+  }, [prefectures]);
+
+  // チェックボックスの状態を管理するための配列
+  const [checkboxes, setCheckboxes] = useState<
+    { id: number; name: string; checked: boolean }[]
+  >([]);
+
+  // チェックボックスを追加する関数
+  const addCheckbox = () => {
+    if (!prefectures) return;
+    const allCheckboxes = prefectures.map((pref) => ({
+      id: pref.prefCode,
+      name: pref.prefName,
+      checked: false,
+    }));
+    setCheckboxes(allCheckboxes);
+  };
+
+  // チェックボックスの状態を変更する関数
+  const handleCheckboxChange = (id: number) => {
+    setCheckboxes((prevState) =>
+      prevState.map((checkbox) =>
+        // 該当のidの状態を反転
+        checkbox.id === id
+          ? { ...checkbox, checked: !checkbox.checked }
+          : checkbox,
+      ),
+    );
+  };
+
+  // チェックされている項目を取得する関数
+  const getCheckedItems = () => {
+    return checkboxes.filter((item) => item.checked).map((item) => item.id);
+  };
+
+  // 人口区分を変更するためのstate
+  // 1: 総人口, 2: 年少人口, 3: 生産年齢人口, 4: 老年人口
+  //? 意図しない動作防止のため初期値を1に設定
+  const [plotType, setPlotType] = useState<number>(1);
+
+  // 都道府県コードから都道府県名を取得する関数
+  const getPrefName = (code: number) => {
+    return prefectures?.find((pref) => pref.prefCode === code)?.prefName;
+  };
+
+  // プロットの設定を表すstate
+  const [plotOptions, setPlotOptions] = useState<plotOptions>({
+    prefCode: [],
+    prefName: [],
+    plotType: 1,
+  });
+
+  // チェックボックスの状態かplotTypeが変更されたら実行
+  useEffect(() => {
+    const checkedItems = getCheckedItems();
+    setPlotOptions({
+      prefCode: checkedItems,
+      prefName: checkedItems.map((code) => getPrefName(code) || ''),
+      plotType: plotType,
+    });
+  }, [checkboxes, plotType]);
+
+  return (
+    <div className="justify-center px-2 py-2">
+      <div className="flex justify-center">
+        <h1 className="font-bold text-black dark:text-white text-2xl px-2 py-2">
+          都道府県
+        </h1>
+      </div>
+      <div
+        className="flex gap-2 px-2 py-2 select-none 
+      grid grid-cols-4 grid-flow-row sm:grid-cols-4  md:grid-cols-4 lg:grid-cols-10"
+      >
+        {checkboxes.map((checkbox) => (
+          <label
+            key={checkbox.id}
+            className="text-black dark:text-white text-xs sm:text-sm md:text-base lg:text-lg 
+            bg-slate-200 dark:bg-slate-950 rounded-lg px-2 py-2"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+            <input
+              type="checkbox"
+              className="accent-lime-500 hover:accent-lime-500"
+              checked={checkbox.checked}
+              onChange={() => handleCheckboxChange(checkbox.id)}
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+            <span className="ml-2">{checkbox.name}</span>
+          </label>
+        ))}
+      </div>
+      <div
+        className="flex justify-center py-4 gap-4 
+      grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 select-none"
+      >
+        <button
+          className="bg-customOlive text-white font-bold py-2 px-4 rounded-lg"
+          onClick={() => setPlotType(1)}
         >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+          総人口
+        </button>
+        <button
+          className="bg-customOlive text-white font-bold py-2 px-4 rounded-lg"
+          onClick={() => setPlotType(2)}
         >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+          年少人口
+        </button>
+        <button
+          className="bg-customOlive text-white font-bold py-2 px-4 rounded-lg"
+          onClick={() => setPlotType(3)}
         >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+          生産年齢人口
+        </button>
+        <button
+          className="bg-customOlive text-white font-bold py-2 px-4 rounded-lg"
+          onClick={() => setPlotType(4)}
+        >
+          老年人口
+        </button>
+      </div>
+      <Plot plotoptions={plotOptions} />
     </div>
   );
 }
